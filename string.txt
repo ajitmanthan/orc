@@ -1,0 +1,113 @@
+const oracledb = require("oracledb");
+
+const connectionString = 
+"(DESCRIPTION =(LOAD_BALANCE = ON ) (FAILOVER = ON)(ADDRESS = (PROTOCOL = TCP)HOST =192.168.....)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=XE)(FAILOVER_MODE=(TYPE=SELECT)(METHOD = BASIC))))";
+
+const config = {
+
+   user: "",
+
+   password: "",
+
+   tns: connectionString,
+
+};
+
+
+let poolPromise;
+
+async function initOracleDB() {
+
+   try {
+
+     if (!poolPromise) {
+
+       poolPromise = await oracledb.createPool(config)
+
+         .then((pool) => {
+
+           console.log("Connected to Oracle DB");
+
+           return pool;
+
+         })
+
+         .catch((err) => {
+
+           console.error("Database connection failed:", err);
+
+           throw err;
+
+         });
+
+     }
+
+     return poolPromise;
+
+   } catch (error) {
+
+     console.error("Error initializing Oracle DB:", error);
+
+     throw error;
+
+   }
+
+}
+
+const executeQuery = async (typeOfQuery, query, params = {}) => {
+
+   let pool;
+
+   let connection;
+
+   let result;
+
+   try {
+
+     pool = await initOracleDB();
+
+     connection = await pool.getConnection();
+
+     console.log("Executing query...");
+
+     result = await connection.execute(query, params);
+
+     if (typeOfQuery === "DML") {
+
+       console.log("DML operation: Transaction processed.");
+
+	  await connection.commit();
+
+     }
+
+     return result;
+
+   } catch (error) {
+
+     console.error("ERROR:", error);
+
+     throw error;
+
+   } finally {
+
+     if (connection) {
+
+       try {
+
+         await connection.close();
+
+       } catch (err) {
+
+         console.error("Error closing the connection:", err);
+
+       }
+
+     }
+
+     console.log("Database connection operation complete.");
+
+   }
+
+};
+
+module.exports = { executeQuery, initOracleDB };
